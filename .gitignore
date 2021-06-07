@@ -31,7 +31,6 @@
 /config/master.key
 
 spec/examples.txt
-config/secrets.yml
 
 /.idea/
 .env
