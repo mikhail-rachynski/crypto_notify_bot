@@ -26,7 +26,8 @@ gem 'turbolinks', '~> 5'
 # gem 'redis', '~> 4.0'
 gem 'dotenv-rails', groups: [:development, :test]
 gem 'telegram-bot', '~> 0.14.4'
-
+gem 'openssl'
+gem 'base64'
 # Use ActiveModel has_secure_password
 # gem 'bcrypt', '~> 3.1.7'
 
