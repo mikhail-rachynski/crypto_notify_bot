@@ -14,12 +14,12 @@ module Encrypt
   end
 
   def decrypt_coin(data)
-    data = Base64.encode64(data)
+    secret_data = Base64.decode64(data)
     decipher = OpenSSL::Cipher.new('aes256')
     decipher.decrypt
     decipher.key = @@key
     decipher.iv = @@iv
-    decipher.update(data) + decipher.final
+    decipher.update(secret_data) + decipher.final
   end
 
 end
