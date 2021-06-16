@@ -40,13 +40,13 @@ gem 'base64'
 # Reduces boot times through caching; required in config/boot.rb
 # gem 'bootsnap', '>= 1.1.0', require: false
 
-group :pry do
-  gem 'awesome_print'
-  gem 'pry'
-  gem 'pry-byebug'
-  gem 'pry-doc'
-  gem 'pry-rails'
-end
+# group :pry do
+#   gem 'awesome_print'
+#   gem 'pry'
+#   gem 'pry-byebug'
+#   gem 'pry-doc'
+#   gem 'pry-rails'
+# end
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
