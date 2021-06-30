@@ -8,4 +8,4 @@
 ToCurrency.create(currency: "btc")
 ToCurrency.create(currency: "eth")
 ToCurrency.create(currency: "usd")
-ToCurrency.create(currency: "eurU")
+ToCurrency.create(currency: "eur")
