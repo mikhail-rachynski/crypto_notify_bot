@@ -52,9 +52,9 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
   def rate!(*args)
     bot.delete_message chat_id: chat['id'], message_id: payload['message_id']
+    @@user = User.find_by(user: chat['id'])
 
-    if chat['id'] == ENV['SUPERADMIN_ID'].to_i
-      @@user = User.new(user: chat['id'])
+    if @@user.is_admin
       @@user.editable = Editable.create(status: true)
       rate_status
     end
@@ -110,6 +110,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def saved_exchanges
+    @@dialog_state["current_user_id"] = chat['id']
     @@user = User.find_by(user: chat['id'])
     unless @@user.coin.empty?
       delete_buttons = []
@@ -246,12 +247,12 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         coin.to_currency.clear
         coin.to_currency << ToCurrency.find_by(currency: @@dialog_state["selected_currency"])
 
-        answer_callback_query "Поздравляем! Сохранено!", show_alert: true
+        answer_callback_query "Сохранено!"
         @@user.editable.update(status: false)
 
         delete_message
         pair = @@dialog_state["current_currency"] + @@dialog_state["selected_currency"]
-        sending_exchange pair, Exchenge.find_by(pair: pair).value
+        sending_exchange pair, Exchenge.find_by(pair: pair).value, "✓"
         @@dialog_state["selected_currency"] = nil
       end
 
@@ -289,8 +290,8 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       unless sum.scan(/[^0.0-9]/).empty?
         delete_bot_message
 
-        text = "Должно быть число больше 0. Ввести ещё раз?",
-            inline_keyboard = [
+        text = "Должно быть число больше 0. Ввести ещё раз?"
+        inline_keyboard = [
                 [{text: 'Да', callback_data: 'error_sum'}],[@@restart]
             ]
         inline_sender text, inline_keyboard

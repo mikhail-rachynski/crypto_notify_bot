@@ -33,9 +33,9 @@ module Rate
     else
       range = @@range[pair]
       if value < recorded_value.value - range
-        dynamics = '-'
+        dynamics = '▼'
       elsif value > recorded_value.value + range
-        dynamics = '+'
+        dynamics = '▲'
       end
 
       unless dynamics.nil?
@@ -46,7 +46,7 @@ module Rate
     end
   end
 
-  def sending_exchange(pair, rate_value, dynamics="")
+  def sending_exchange(pair, rate_value, dynamics = nil)
     currency_name = pair[0..2]
     to_currency_name = pair[3..-1]
     to_currency = ToCurrency.where(currency: currency_name).or(ToCurrency.where(currency: to_currency_name))
@@ -62,7 +62,7 @@ module Rate
           end
 
           bot.send_message chat_id: user.user,
-                           text: "#{dynamics} #{rate_value}#{t("telegram_webhooks.currencies.#{to_currency_name}")} => #{converted}#{t("telegram_webhooks.currencies.#{coin_item.to_currency[0].currency}")}"
+                           text: "#{dynamics} #{rate_value}#{t("telegram_webhooks.currencies.#{to_currency_name}")} ➔ #{converted}#{t("telegram_webhooks.currencies.#{coin_item.to_currency[0].currency}")}"
         end
 
       end
