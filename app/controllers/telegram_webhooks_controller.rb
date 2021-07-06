@@ -12,7 +12,8 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       "current_currency" => nil,
       "selected_currency" => nil,
       "mode" => nil,
-      "editable_coin_id" => nil
+      "editable_coin_id" => nil,
+      "text_for_sending" => nil
   }
 
   @@user = nil
@@ -51,20 +52,45 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def rate!(*args)
+    admin_option 'rate'
+  end
+
+  def sender!(*args)
+    admin_option 'sender'
+  end
+
+  def admin_option(action)
+    @@dialog_state["current_user_id"] = chat['id']
     bot.delete_message chat_id: chat['id'], message_id: payload['message_id']
     @@user = User.find_by(user: chat['id'])
 
     if @@user.is_admin
-      @@user.editable = Editable.create(status: true)
-      rate_status
+      @@user.upd_editable true
+      case action
+      when 'rate'
+        rate_status
+
+      when 'sender'
+        sender
+
+      end
+
     end
   end
 
   def rate_status
-    text = "*Статус:* #{status}"
+    text = "Статус: *#{status}*"
     inline_keyboard = [[{text: "#{status ? "Stop" : "Start"}", callback_data: "#{status ? "stop_rate" : "start_rate"}"}
                        ],
                        [@@cancel]]
+
+    inline_sender text, inline_keyboard
+  end
+
+  def sender
+    @@dialog_state["current_state"] = "admin_sender"
+    text = "Пришли что-то для рассылки всем"
+    inline_keyboard = [[@@cancel]]
 
     inline_sender text, inline_keyboard
   end
@@ -74,7 +100,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
     unless @@user.save
       @@user = User.find_by user: chat['id']
-      @@user.editable.update(status: true)
+      @@user.upd_editable true
       saved_exchanges
     else
       @@user.editable = Editable.create(status: true)
@@ -189,7 +215,6 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       unless data == 'error_sum'
         @@dialog_state["current_currency"] = data
       end
-
       set_sum
 
     when 'coin'
@@ -230,7 +255,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
     when 'cancel'
       delete_message
-      @@user.editable.update(status: false) if @@user
+      @@user.upd_editable false if @@user
       @@dialog_state.clear
 
     when 'save'
@@ -248,7 +273,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         coin.to_currency << ToCurrency.find_by(currency: @@dialog_state["selected_currency"])
 
         answer_callback_query "Сохранено!"
-        @@user.editable.update(status: false)
+        @@user.upd_editable false
 
         delete_message
         pair = @@dialog_state["current_currency"] + @@dialog_state["selected_currency"]
@@ -270,14 +295,23 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       delete_message
       rate_status
 
+    when 'send_all'
+      User.find_each do |user|
+        bot.send_message chat_id: user.user,
+                         parse_mode: "Markdown",
+                         text: @@dialog_state["text_for_sending"]
+      end
+      @@dialog_state["text_for_sending"] = nil
+      delete_message
+
     else
       answer_callback_query t('.no_alert')
     end
   end
 
   def delete_bot_message()
-      bot.delete_message chat_id: @@dialog_state["current_user_id"],
-                         message_id: @@dialog_state["bot_current_message_id"]
+    bot.delete_message chat_id: @@dialog_state["current_user_id"],
+                       message_id: @@dialog_state["bot_current_message_id"]
   end
 
   def message(message)
@@ -285,21 +319,28 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
                        message_id: payload['message_id']
 
     case @@dialog_state["current_state"]
-    when "set_sum"
+    when 'set_sum'
       sum = message['text']
       unless sum.scan(/[^0.0-9]/).empty?
         delete_bot_message
 
         text = "Должно быть число больше 0. Ввести ещё раз?"
         inline_keyboard = [
-                [{text: 'Да', callback_data: 'error_sum'}],[@@restart]
-            ]
+            [{text: 'Да', callback_data: 'error_sum'}],[@@restart]
+        ]
         inline_sender text, inline_keyboard
       else
         @@dialog_state["current_coin_value"] = message['text']
         delete_bot_message
         check_sum
       end
+
+    when 'admin_sender'
+      delete_bot_message
+      text = message["text"]
+      inline_keyboard = [[{text: "Отправить всем", callback_data: "send_all"}],[@@cancel]]
+      inline_sender text, inline_keyboard
+      @@dialog_state["text_for_sending"] = text
     end
   end
 
