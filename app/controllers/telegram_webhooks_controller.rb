@@ -6,15 +6,15 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
 
   @@dialog_state = {
-      "bot_current_message_id" => nil,
-      "current_user_id" => nil,
-      "current_state" => nil,
-      "current_coin_value" => nil,
-      "current_currency" => nil,
-      "selected_currency" => nil,
-      "mode" => nil,
-      "editable_coin_id" => nil,
-      "text_for_sending" => nil
+      bot_current_message_id: nil,
+      current_user_id: nil,
+      current_state: nil,
+      current_coin_value: nil,
+      current_currency: nil,
+      selected_currency: nil,
+      mode: nil,
+      editable_coin_id: nil,
+      text_for_sending: nil
   }
 
   @@user = nil
@@ -39,7 +39,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
                            reply_markup: {
                                inline_keyboard: keyboard
                            }
-    @@dialog_state["bot_current_message_id"] = message['result']['message_id']
+    @@dialog_state[:bot_current_message_id] = message['result']['message_id']
   end
 
   def start!(*)
@@ -74,7 +74,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def admin_option(action)
-    @@dialog_state["current_user_id"] = chat['id']
+    @@dialog_state[:current_user_id] = chat['id']
     bot.delete_message chat_id: chat['id'], message_id: payload['message_id']
     @@user = User.find_by(user: chat['id'])
 
@@ -101,7 +101,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def sender
-    @@dialog_state["current_state"] = "admin_sender"
+    @@dialog_state[:current_state] = "admin_sender"
     text = t(".admin.sender")
     inline_keyboard = [[@@cancel]]
 
@@ -133,9 +133,9 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def currencies_dialog
-    @@dialog_state["current_user_id"] = chat['id']
-    @@dialog_state["mode"] = "new"
-    @@dialog_state["current_state"] = "currencies"
+    @@dialog_state[:current_user_id] = chat['id']
+    @@dialog_state[:mode] = "new"
+    @@dialog_state[:current_state] = "currencies"
 
     text = t(".dialog.choice_currency")
     inline_keyboard = [[{text: "#{t(".currencies.btc")} BTC", callback_data: 'btc'},
@@ -149,7 +149,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def saved_exchanges
-    @@dialog_state["current_user_id"] = chat['id']
+    @@dialog_state[:current_user_id] = chat['id']
     @@user = User.find_by(user: chat['id'])
     unless @@user.coin.empty?
       delete_buttons = []
@@ -170,9 +170,10 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def set_sum()
-    @@dialog_state["current_state"] = "set_sum"
+    @@dialog_state[:current_state] = "set_sum"
 
-    text = t(".dialog.enter_balance", currency: @@dialog_state["current_currency"].upcase)
+    text = t(".dialog.enter_balance",
+             currency: @@dialog_state[:current_currency].upcase)
     inline_keyboard = [[@@restart, @@cancel]]
 
     inline_sender text, inline_keyboard
@@ -180,11 +181,13 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
   def check_sum
     text = t(".dialog.check",
-             balance: @@dialog_state["current_coin_value"] ,
-             currency: @@dialog_state["current_currency"].upcase)
+             balance: @@dialog_state[:current_coin_value] ,
+             currency: @@dialog_state[:current_currency].upcase)
     inline_keyboard = [[
-                           {text: t(".buttons.yes"), callback_data: 'coin'},
-                           {text: t(".buttons.change"), callback_data: @@dialog_state["current_currency"]}
+                           {text: t(".buttons.yes"),
+                            callback_data: 'coin'},
+                           {text: t(".buttons.change"),
+                            callback_data: @@dialog_state[:current_currency]}
                        ],
                        [@@restart, @@cancel]]
 
@@ -192,13 +195,13 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def select_currency_for_conversion
-    unless @@currencies.include?(@@dialog_state["current_currency"])
+    unless @@currencies.include?(@@dialog_state[:current_currency])
       currencies_to_convert = @@currencies
     else
       currencies_to_convert = @@crypto_currencies
     end
     currencies_to_convert = currencies_to_convert.map {|item|
-      {text: "#{"✓" if @@dialog_state["selected_currency"] == item} #{item.upcase}",
+      {text: "#{"✓" if @@dialog_state[:selected_currency] == item} #{item.upcase}",
        callback_data: "sel_#{item}"}}
 
     text = t(".dialog.select_currency")
@@ -231,7 +234,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     when 'btc', 'eth', 'usd', 'eur', 'error_sum'
       delete_message
       unless data == 'error_sum'
-        @@dialog_state["current_currency"] = data
+        @@dialog_state[:current_currency] = data
       end
       set_sum
 
@@ -241,12 +244,12 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
     when "edit_#{data[5..-1] if data.scan("edit_")}"
       coin_id = data[5..-1]
-      @@dialog_state["mode"] = "edit"
-      @@dialog_state["editable_coin_id"] = coin_id
+      @@dialog_state[:mode] = "edit"
+      @@dialog_state[:editable_coin_id] = coin_id
       coin = Coin.find(coin_id)
-      @@dialog_state["current_coin_value"] = decrypt_coin(coin.coin)
-      @@dialog_state["current_currency"] = coin.currency
-      @@dialog_state["selected_currency"] = coin.to_currency[0].currency
+      @@dialog_state[:current_coin_value] = decrypt_coin(coin.coin)
+      @@dialog_state[:current_currency] = coin.currency
+      @@dialog_state[:selected_currency] = coin.to_currency[0].currency
       delete_message
       check_sum
 
@@ -263,7 +266,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
     when "sel_#{data[4..-1] if data.scan("sel_")}"
       delete_message
-      @@dialog_state["selected_currency"] = data[4..-1]
+      @@dialog_state[:selected_currency] = data[4..-1]
 
       select_currency_for_conversion
 
@@ -277,24 +280,25 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       @@dialog_state.clear
 
     when 'save'
-      if @@dialog_state["selected_currency"].empty?
-        answer_callback_query t(".answer.end_currency"), show_alert: true
+      if @@dialog_state[:selected_currency].empty?
+        answer_callback_query t(".answer.end_currency"),
+                                show_alert: true
       else
-        if @@dialog_state["mode"] == "new"
-          coin = Coin.create(currency: @@dialog_state["current_currency"],
+        if @@dialog_state[:mode] == "new"
+          coin = Coin.create(currency: @@dialog_state[:current_currency],
                              user: @@user)
-        elsif @@dialog_state["mode"] = "edit"
-          coin = Coin.find(@@dialog_state["editable_coin_id"])
+        elsif @@dialog_state[:mode] = "edit"
+          coin = Coin.find(@@dialog_state[:editable_coin_id])
         end
-        coin.update(coin: encrypt_coin(@@dialog_state["current_coin_value"]))
+        coin.update(coin: encrypt_coin(@@dialog_state[:current_coin_value]))
         coin.to_currency.clear
-        coin.to_currency << ToCurrency.find_by(currency: @@dialog_state["selected_currency"])
+        coin.to_currency << ToCurrency.find_by(currency: @@dialog_state[:selected_currency])
 
         answer_callback_query t(".answer.saved")
         @@user.upd_editable false
 
         delete_message
-        pair = @@dialog_state["current_currency"] + @@dialog_state["selected_currency"]
+        pair = @@dialog_state[:current_currency] + @@dialog_state[:selected_currency]
         # sending_exchange pair, Exchenge.find_by(pair: pair).value, "✓"
         @@dialog_state.clear
       end
@@ -317,24 +321,24 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       User.find_each do |user|
         bot.send_message chat_id: user.user,
                          parse_mode: "Markdown",
-                         text: @@dialog_state["text_for_sending"]
+                         text: @@dialog_state[:text_for_sending]
       end
-      @@dialog_state["text_for_sending"] = nil
+      @@dialog_state[:text_for_sending] = nil
       delete_message
 
     end
   end
 
   def delete_bot_message()
-    bot.delete_message chat_id: @@dialog_state["current_user_id"],
-                       message_id: @@dialog_state["bot_current_message_id"]
+    bot.delete_message chat_id: @@dialog_state[:current_user_id],
+                       message_id: @@dialog_state[:bot_current_message_id]
   end
 
   def message(message)
     bot.delete_message chat_id: chat['id'],
                        message_id: payload['message_id']
 
-    case @@dialog_state["current_state"]
+    case @@dialog_state[:current_state]
     when 'set_sum'
       sum = message['text']
       unless sum.scan(/[^0.0-9]/).empty?
@@ -346,7 +350,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         ]
         inline_sender text, inline_keyboard
       else
-        @@dialog_state["current_coin_value"] = message['text']
+        @@dialog_state[:current_coin_value] = message['text']
         delete_bot_message
         check_sum
       end
@@ -354,16 +358,18 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     when 'admin_sender'
       delete_bot_message
       text = message["text"]
-      inline_keyboard = [[{text: t(".admin.send_all"), callback_data: "send_all"}],[@@cancel]]
+      inline_keyboard = [[{text: t(".admin.send_all"),
+                           callback_data: "send_all"}],[@@cancel]]
       inline_sender text, inline_keyboard
-      @@dialog_state["text_for_sending"] = text
+      @@dialog_state[:text_for_sending] = text
     end
   end
 
   def action_missing(action, *_args)
     if action_type == :command
       respond_with :message,
-                   text: t('telegram_webhooks.action_missing.command', command: action_options[:command])
+                   text: t('telegram_webhooks.action_missing.command',
+                           command: action_options[:command])
     end
   end
 
