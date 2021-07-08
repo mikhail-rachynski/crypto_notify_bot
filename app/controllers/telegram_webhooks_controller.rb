@@ -26,7 +26,15 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   @@cancel = nil
 
   def switch_locale
-    I18n.locale = User.find_by(user: chat['id']).locale || I18n.default_locale
+    if chat
+      user = User.find_by(user: chat['id'])
+      if user
+        I18n.locale = user.locale || I18n.default_locale
+      end
+    else
+      I18n.locale = I18n.default_locale
+    end
+
 
     @@restart = {text: t(".buttons.start_over"), callback_data: 'restart'}
     @@cancel = {text: t(".buttons.cancel"), callback_data: 'cancel'}
@@ -109,6 +117,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   end
 
   def starting
+    @@dialog_state[:current_state] = "starting"
     @@user = User.new(user: chat['id'])
 
     unless @@user.save
@@ -224,23 +233,23 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     when 'by', 'ru', 'en'
       User.find_by(user: chat['id']).update(locale: data)
       switch_locale
+      starting if @@dialog_state[:current_state] == "starting"
       delete_message
-      starting
 
     when 'add'
-      delete_message
       currencies_dialog
+      delete_message
 
     when 'btc', 'eth', 'usd', 'eur', 'error_sum'
-      delete_message
       unless data == 'error_sum'
         @@dialog_state[:current_currency] = data
       end
       set_sum
+      delete_message
 
     when 'coin'
-      delete_message
       select_currency_for_conversion
+      delete_message
 
     when "edit_#{data[5..-1] if data.scan("edit_")}"
       coin_id = data[5..-1]
@@ -271,13 +280,13 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       select_currency_for_conversion
 
     when 'restart'
-      delete_message
       starting
+      delete_message
 
     when 'cancel'
-      delete_message
       @@user.upd_editable false if @@user
       @@dialog_state.clear
+      delete_message
 
     when 'save'
       if @@dialog_state[:selected_currency].empty?
@@ -297,10 +306,15 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         answer_callback_query t(".answer.saved")
         @@user.upd_editable false
 
-        delete_message
-        pair = @@dialog_state[:current_currency] + @@dialog_state[:selected_currency]
-        # sending_exchange pair, Exchenge.find_by(pair: pair).value, "✓"
+        if @@crypto_currencies.include?(@@dialog_state[:current_currency])
+          pair = @@dialog_state[:current_currency] + @@dialog_state[:selected_currency]
+        else
+          pair = @@dialog_state[:selected_currency] + @@dialog_state[:current_currency]
+        end
+
+        sending_conversion pair, Exchenge.find_by(pair: pair).value, coin, "✓"
         @@dialog_state.clear
+        delete_message
       end
 
     when 'stop'
@@ -309,23 +323,33 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
     when 'start_rate'
       rate_start
-      delete_message
       rate_status
+      delete_message
 
     when 'stop_rate'
       rate_stop
-      delete_message
       rate_status
-
-    when 'send_all'
-      User.find_each do |user|
-        bot.send_message chat_id: user.user,
-                         parse_mode: "Markdown",
-                         text: @@dialog_state[:text_for_sending]
-      end
-      @@dialog_state[:text_for_sending] = nil
       delete_message
 
+    when 'send_everyone'
+      counter = []
+      User.find_each do |user|
+        begin
+          message = bot.send_message chat_id: user.user,
+                                     parse_mode: "Markdown",
+                                     text: @@dialog_state[:text_for_sending]
+
+          counter << true if message['ok']
+        rescue
+          p $!
+        end
+      end
+
+      @@dialog_state[:text_for_sending] = nil
+      bot.send_message chat_id: chat['id'],
+                      parse_mode: "Markdown",
+                      text: t(".admin.sended", to: counter.length, of: User.count)
+      delete_message
     end
   end
 
@@ -358,8 +382,8 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     when 'admin_sender'
       delete_bot_message
       text = message["text"]
-      inline_keyboard = [[{text: t(".admin.send_all"),
-                           callback_data: "send_all"}],[@@cancel]]
+      inline_keyboard = [[{text: t(".admin.send_everyone"),
+                           callback_data: "send_everyone"}],[@@cancel]]
       inline_sender text, inline_keyboard
       @@dialog_state[:text_for_sending] = text
     end
@@ -373,4 +397,9 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     end
   end
 
+  def unsupported_payload_type()
+    User.find_by(user: update["my_chat_member"]["chat"]["id"]).destroy if update["my_chat_member"]["new_chat_member"]["status"] == "kicked"
+  end
+
 end
+
