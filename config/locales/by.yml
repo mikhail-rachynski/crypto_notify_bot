@@ -27,6 +27,7 @@ by:
       status: 'Статус: *%{status}*'
       sender: Прыйшлі нешта для рассылання ўсім
       send_everyone: Адправіць усім
+      sended: Адпраўлена %{to} з %{of}
     answer:
       deleted: Валюта выдаленая
       previously_deleted: Валюта ўжо была выдаленая

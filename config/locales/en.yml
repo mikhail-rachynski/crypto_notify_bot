@@ -27,6 +27,7 @@ en:
       status: 'Status: *%{status}*'
       sender: Send a message for mailing
       send_everyone: Send to everyone
+      sended: Sended %{to} of %{of}
     answer:
       deleted: Currency deleted
       previously_deleted: The currency has already been removed

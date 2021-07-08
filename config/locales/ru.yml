@@ -27,6 +27,7 @@ ru:
       status: 'Статус: *%{status}*'
       sender: Пришли что-то для рассылки всем
       send_everyone: Отправить всем
+      sended: Отправлено %{to} из %{of}
     answer:
       deleted: Валюта удалена
       previously_deleted: Валюта уже была удалена
