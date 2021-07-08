@@ -1,0 +1,40 @@
+ru:
+  telegram_webhooks:
+    currencies:
+      btc: ₿
+      eth: ⧫
+      usd: $
+      eur: €
+    buttons:
+      'start_over': Начать сначала
+      'cancel': 'Отмена'
+      'add': Добавить
+      'yes': Да
+      'change': Изменить
+      'save': Сохранить
+    dialog:
+      delete: Удалить все данные?
+      no_data: Ваших данных нет. Начать?
+      choise_locale: Выберите язык
+      choice_currency: Выберите тип вашей валюты
+      choise_usdt: Выберите валюту
+      choise_saved: Выберите действия с вашими валютами
+      enter_balance: Введите баланс %{currency}. (*Будет храниться в зашифрованном виде*)
+      select_currency: Выберите валюту в которую хотите конвертировать
+      non_zero: Должно быть число больше 0. Ввести ещё раз?
+      check: '%{balance} %{currency} - сохранить?'
+    admin:
+      status: 'Статус: *%{status}*'
+      sender: Пришли что-то для рассылки всем
+      send_everyone: Отправить всем
+    answer:
+      deleted: Валюта удалена
+      previously_deleted: Валюта уже была удалена
+      end_currency: Должна быть выбрана конечная валюта
+      saved: Сохранено!
+    action_missing:
+      command: '%{command} не поддерживается'
+    help:
+      content: |
+        Доступные команды:
+        /start - Начать или изменить подписку.

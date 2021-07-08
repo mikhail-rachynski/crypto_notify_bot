@@ -2,6 +2,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   include Telegram::Bot::UpdatesController::MessageContext
   include Encrypt
   include Rate
+  before_action :switch_locale
 
 
   @@dialog_state = {
@@ -21,11 +22,19 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   @@crypto_currencies = ["btc", "eth"]
   @@currencies = ["usd", "eur"]
 
-  @@restart = {text: "Начать сначала", callback_data: 'restart'}
-  @@cancel = {text: "Отмена", callback_data: 'cancel'}
+  @@restart = nil
+  @@cancel = nil
+
+  def switch_locale
+    I18n.locale = User.find_by(user: chat['id']).locale
+
+    @@restart = {text: t(".buttons.start_over"), callback_data: 'restart'}
+    @@cancel = {text: t(".buttons.cancel"), callback_data: 'cancel'}
+  end
 
   def inline_sender(text, keyboard)
-    message = respond_with :message, text: text,
+
+    message = respond_with :message, text: text.to_s,
                            parse_mode: "Markdown",
                            reply_markup: {
                                inline_keyboard: keyboard
@@ -38,14 +47,19 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     starting
   end
 
+  def locale!(*)
+    bot.delete_message chat_id: chat['id'], message_id: payload['message_id']
+    locale_dialog
+  end
+
   def stop!(*)
     bot.delete_message chat_id: chat['id'], message_id: payload['message_id']
     if User.find_by(user: chat['id'])
-      text = "Удалить все данные?"
-      inline_keyboard = [[{text: 'Да', callback_data: 'stop'}, @@cancel]]
+      text = t(".dialog.delete")
+      inline_keyboard = [[{text: t(".buttons.yes"), callback_data: 'stop'}, @@cancel]]
     else
-      text = "Ваших данных нет. Начать?"
-      inline_keyboard = [[{text: 'Да', callback_data: 'add'}, @@cancel]]
+      text = t(".dialog.no_data")
+      inline_keyboard = [[{text: t(".buttons.yes"), callback_data: 'add'}, @@cancel]]
     end
 
     inline_sender text, inline_keyboard
@@ -74,14 +88,13 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         sender
 
       end
-
     end
   end
 
   def rate_status
-    text = "Статус: *#{status}*"
-    inline_keyboard = [[{text: "#{status ? "Stop" : "Start"}", callback_data: "#{status ? "stop_rate" : "start_rate"}"}
-                       ],
+    text = t(".admin.status", status: status)
+    inline_keyboard = [[{text: "#{status ? "Stop" : "Start"}",
+                         callback_data: "#{status ? "stop_rate" : "start_rate"}"}],
                        [@@cancel]]
 
     inline_sender text, inline_keyboard
@@ -89,7 +102,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
   def sender
     @@dialog_state["current_state"] = "admin_sender"
-    text = "Пришли что-то для рассылки всем"
+    text = t(".admin.sender")
     inline_keyboard = [[@@cancel]]
 
     inline_sender text, inline_keyboard
@@ -104,8 +117,19 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       saved_exchanges
     else
       @@user.editable = Editable.create(status: true)
-      currencies_dialog
+      locale_dialog
     end
+  end
+
+  def locale_dialog
+    text = t(".dialog.choise_locale")
+    inline_keyboard = [[{text: "Беларуская", callback_data: 'by'},
+                        {text: "Русский", callback_data: 'ru'},
+                        {text: "English", callback_data: 'en'}
+                       ],
+                       [@@cancel]]
+
+    inline_sender text, inline_keyboard
   end
 
   def currencies_dialog
@@ -113,25 +137,14 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     @@dialog_state["mode"] = "new"
     @@dialog_state["current_state"] = "currencies"
 
-    text = "*Выберите тип вашей валюты:*"
-    inline_keyboard = [[{text: "#{t('.currencies.btc')} BTC", callback_data: 'btc'},
-                        {text: "#{t('.currencies.eth')} ETH", callback_data: 'eth'},
-                        {text: 'Tether/USDT', callback_data: 'tether'}
+    text = t(".dialog.choice_currency")
+    inline_keyboard = [[{text: "#{t(".currencies.btc")} BTC", callback_data: 'btc'},
+                        {text: "#{t(".currencies.eth")} ETH", callback_data: 'eth'},
+                        {text: "#{t(".currencies.usd")} USD", callback_data: 'usd'},
+                        {text: "#{t(".currencies.eur")} EUR", callback_data: 'eur'}
                        ],
                        [@@cancel]]
 
-    inline_sender text, inline_keyboard
-  end
-
-  def tether
-    @@dialog_state["current_state"] = "teather"
-
-    text = "Выберите валюту:"
-    inline_keyboard = [[
-                           {text: "#{t('.currencies.usd')} USD", callback_data: 'usd'},
-                           {text: "#{t('.currencies.eur')} EUR", callback_data: 'eur'}
-                       ],
-                       [@@restart, @@cancel]]
     inline_sender text, inline_keyboard
   end
 
@@ -142,11 +155,12 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       delete_buttons = []
       exchanges = @@user.coin.map do |item|
         delete_buttons << {text: "🗑", callback_data: "del_#{item.id}"}
-        {text: "#{item.currency.upcase} ➔ #{item.to_currency[0].currency.upcase}", callback_data: "edit_#{item.id}"}
+        {text: "#{item.currency.upcase} ➔ #{item.to_currency[0].currency.upcase}",
+         callback_data: "edit_#{item.id}"}
       end
-      text = "*Выберите действия с вашими валютами:*"
+      text = t(".dialog.choise_saved")
       inline_keyboard = [exchanges, delete_buttons,
-                         [{text: "Добавить", callback_data: 'add'}],
+                         [{text: t(".buttons.add"), callback_data: 'add'}],
                          [@@cancel]
       ]
       inline_sender text, inline_keyboard
@@ -158,17 +172,19 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   def set_sum()
     @@dialog_state["current_state"] = "set_sum"
 
-    text = "Введите баланс #{@@dialog_state["current_currency"].upcase}. (*Будет храниться в зашифрованном виде*)"
+    text = t(".dialog.enter_balance", currency: @@dialog_state["current_currency"].upcase)
     inline_keyboard = [[@@restart, @@cancel]]
 
     inline_sender text, inline_keyboard
   end
 
   def check_sum
-    text = "#{@@dialog_state["current_coin_value"]} #{@@dialog_state["current_currency"].upcase} - сохранить?"
+    text = t(".dialog.check",
+             balance: @@dialog_state["current_coin_value"] ,
+             currency: @@dialog_state["current_currency"].upcase)
     inline_keyboard = [[
-                           {text: 'Да', callback_data: 'coin'},
-                           {text: 'Изменить', callback_data: @@dialog_state["current_currency"]}
+                           {text: t(".buttons.yes"), callback_data: 'coin'},
+                           {text: t(".buttons.change"), callback_data: @@dialog_state["current_currency"]}
                        ],
                        [@@restart, @@cancel]]
 
@@ -185,10 +201,10 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       {text: "#{"✓" if @@dialog_state["selected_currency"] == item} #{item.upcase}",
        callback_data: "sel_#{item}"}}
 
-    text = "Выберите валюту в которую хотите конвертировать:"
+    text = t(".dialog.select_currency")
     inline_keyboard = [currencies_to_convert,
                        [
-                           {text: "Сохранить", callback_data: 'save'}
+                           {text: t(".buttons.save"), callback_data: 'save'}
                        ],
                        [@@restart, @@cancel]
     ]
@@ -202,9 +218,11 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     end
 
     case data
-    when 'tether'
+    when 'by', 'ru', 'en'
+      User.find_by(user: chat['id']).update(locale: data)
+      switch_locale
       delete_message
-      tether
+      starting
 
     when 'add'
       delete_message
@@ -235,10 +253,10 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     when "del_#{data[4..-1] if data.scan("del_")}"
       begin
         Coin.find(data[4..-1]).destroy
-        answer_callback_query "Валюта удалена"
+        answer_callback_query t(".answer.deleted")
         saved_exchanges
       rescue
-        answer_callback_query "Валюта уже была удалена"
+        answer_callback_query t(".answer.previously_deleted")
       end
       delete_message
 
@@ -260,7 +278,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
 
     when 'save'
       if @@dialog_state["selected_currency"].empty?
-        answer_callback_query "Должна быть выбрана конечная валюта", show_alert: true
+        answer_callback_query t(".answer.end_currency"), show_alert: true
       else
         if @@dialog_state["mode"] == "new"
           coin = Coin.create(currency: @@dialog_state["current_currency"],
@@ -272,13 +290,13 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         coin.to_currency.clear
         coin.to_currency << ToCurrency.find_by(currency: @@dialog_state["selected_currency"])
 
-        answer_callback_query "Сохранено!"
+        answer_callback_query t(".answer.saved")
         @@user.upd_editable false
 
         delete_message
         pair = @@dialog_state["current_currency"] + @@dialog_state["selected_currency"]
-        sending_exchange pair, Exchenge.find_by(pair: pair).value, "✓"
-        @@dialog_state["selected_currency"] = nil
+        # sending_exchange pair, Exchenge.find_by(pair: pair).value, "✓"
+        @@dialog_state.clear
       end
 
     when 'stop'
@@ -304,8 +322,6 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       @@dialog_state["text_for_sending"] = nil
       delete_message
 
-    else
-      answer_callback_query t('.no_alert')
     end
   end
 
@@ -324,7 +340,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
       unless sum.scan(/[^0.0-9]/).empty?
         delete_bot_message
 
-        text = "Должно быть число больше 0. Ввести ещё раз?"
+        text = t(".dialog.non_zero")
         inline_keyboard = [
             [{text: 'Да', callback_data: 'error_sum'}],[@@restart]
         ]
@@ -338,7 +354,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     when 'admin_sender'
       delete_bot_message
       text = message["text"]
-      inline_keyboard = [[{text: "Отправить всем", callback_data: "send_all"}],[@@cancel]]
+      inline_keyboard = [[{text: t(".admin.send_all"), callback_data: "send_all"}],[@@cancel]]
       inline_sender text, inline_keyboard
       @@dialog_state["text_for_sending"] = text
     end

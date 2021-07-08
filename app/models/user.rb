@@ -4,6 +4,8 @@ class User < ApplicationRecord
   has_one :editable, dependent: :destroy
   has_one :admin, dependent: :destroy
 
+  enum locale: [:by, :ru, :en]
+
   def is_admin
     self.admin.is_admin if self.admin
   end

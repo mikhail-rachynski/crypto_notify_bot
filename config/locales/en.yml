@@ -5,46 +5,36 @@ en:
       eth: ⧫
       usd: $
       eur: €
+    buttons:
+      'start_over': Start over
+      'cancel': 'Cancel'
+      'add': Add
+      'yes': 'Yes'
+      'change': Change
+      'save': Save
+    dialog:
+      delete: Delete all data?
+      no_data: No your data. To begin?
+      choise_locale: Choose locale
+      choice_currency: Choose your currency
+      choise_usdt: Choose currency
+      choise_saved: Select actions with your currencies
+      enter_balance: Enter balance %{currency}. (*Will be stored encrypted*)
+      select_currency: Select currency to convert
+      non_zero: There must be a number. Enter again?
+      check: '%{balance} %{currency} - save?'
+    admin:
+      status: 'Status: *%{status}*'
+      sender: Send a message for mailing
+      send_everyone: Send to everyone
+    answer:
+      deleted: Currency deleted
+      previously_deleted: The currency has already been removed
+      end_currency: Выбрите конечную валюту
+      saved: Saved!
     action_missing:
-      command: Can not perform %{command}
-    callback_query:
-      alert: This is ALERT-T-T!!!
-      no_alert: Simple answers
+      command: '%{command} not supported'
     help:
       content: |
-        Available cmds:
-        /start - Greeting.
-        /memo %text% - Saves text to session.
-        /remind_me - Replies with text from session.
-        /keyboard - Simple keyboard.
-        /inline_keyboard - Inline keyboard example.
-        Bot supports inline queries. Enable it in @BotFather.
-        /last_chosen_inline_result - Your last chosen inline result \
-        (Enable feedback with /setinlinefeedback).
-    inline_keyboard:
-      alert: Answer with alert
-      no_alert: Without alert
-      prompt: 'Check my inline keyboard:'
-      repo: Open gem repo
-    inline_query:
-      content: Content
-      description: Description
-    keyboard:
-      buttons:
-        - Lorem dsa
-        - Ipsum
-        - /cancel
-      prompt: 'Select something with keyboard:'
-      selected: "You've selected: %{value}"
-    last_chosen_inline_result:
-      prompt: Mention me to initiate inline query
-      selected: "You've chosen result #%{result_id}"
-    memo:
-      notice: Remembered!
-      prompt: What should I remember?
-    message:
-      content: 'You wrote: %{text}'
-    remind_me:
-      nothing: Nothing to remind
-    start:
-      content: Hi there!
+        Доступные команды:
+        /start - Начать или изменить подписку.
