@@ -25,7 +25,6 @@ module Rate
   end
 
   def checking_changes(pair, value)
-
     recorded_value = Exchenge.find_by(pair: pair)
     dynamics = nil
     if recorded_value.nil?
@@ -40,13 +39,13 @@ module Rate
 
       unless dynamics.nil?
         recorded_value.update(value: value)
-        sending_exchange pair, value, dynamics
+        find_coin_for_sending pair, value, dynamics
       end
 
     end
   end
 
-  def sending_exchange(pair, rate_value, dynamics = nil)
+  def find_coin_for_sending(pair, rate_value, dynamics = nil)
     currency_name = pair[0..2]
     to_currency_name = pair[3..-1]
     to_currency = ToCurrency.where(currency: currency_name).or(ToCurrency.where(currency: to_currency_name))
@@ -54,20 +53,27 @@ module Rate
       if coin_item.currency == currency_name or coin_item.currency == to_currency_name
         user = coin_item.user
         unless user.editable.status
-          coin = decrypt_coin(coin_item.coin).to_f
-          if coin_item.currency == "btc" or coin_item.currency == "eth"
-            converted = (rate_value * (coin - (coin * 0.049))).to_i
-          else
-            converted = (coin / rate_value).to_f.round(5)
-          end
-
-          bot.send_message chat_id: user.user,
-                           text: "#{dynamics} #{rate_value}#{t("telegram_webhooks.currencies.#{to_currency_name}")} ➔ #{converted}#{t("telegram_webhooks.currencies.#{coin_item.to_currency[0].currency}")}"
+          sending_conversion(pair, rate_value, coin_item, dynamics)
         end
-
       end
     end
     }
+  end
+
+  def sending_conversion(pair, rate_value, coin_item, dynamics = nil)
+    coin = decrypt_coin(coin_item.coin).to_f
+    if coin_item.currency == "btc" or coin_item.currency == "eth"
+      converted = (rate_value * (coin - (coin * 0.049))).to_i
+    else
+      converted = (coin / rate_value).to_f.round(5)
+    end
+    begin
+      bot.send_message chat_id: coin_item.user.user,
+                       parse_mode: "Markdown",
+                       text: "#{dynamics} #{rate_value}#{t(".currencies.#{pair[3..-1]}")} ➔ #{converted}#{t(".currencies.#{coin_item.to_currency[0].currency}")}"
+    rescue
+      p $!
+    end
   end
 
   private
