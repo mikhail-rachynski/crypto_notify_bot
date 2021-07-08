@@ -26,7 +26,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
   @@cancel = nil
 
   def switch_locale
-    I18n.locale = User.find_by(user: chat['id']).locale
+    I18n.locale = User.find_by(user: chat['id']).locale || I18n.default_locale
 
     @@restart = {text: t(".buttons.start_over"), callback_data: 'restart'}
     @@cancel = {text: t(".buttons.cancel"), callback_data: 'cancel'}
@@ -341,7 +341,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
     case @@dialog_state[:current_state]
     when 'set_sum'
       sum = message['text']
-      unless sum.scan(/[^0.0-9]/).empty?
+      unless sum.scan(/[^0,.0-9]/).empty?
         delete_bot_message
 
         text = t(".dialog.non_zero")
@@ -350,7 +350,7 @@ class TelegramWebhooksController < Telegram::Bot::UpdatesController
         ]
         inline_sender text, inline_keyboard
       else
-        @@dialog_state[:current_coin_value] = message['text']
+        @@dialog_state[:current_coin_value] = message['text'].gsub(/,/, '.')
         delete_bot_message
         check_sum
       end
