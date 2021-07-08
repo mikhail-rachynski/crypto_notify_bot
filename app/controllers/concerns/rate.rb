@@ -21,7 +21,7 @@ module Rate
   end
 
   def status
-    Thread.list.include?(@@th)
+    @@rate_state
   end
 
   def checking_changes(pair, value)
@@ -72,7 +72,7 @@ module Rate
 
   private
 
-  def get_rate(command = nil)
+  def get_rate
     @@th = Thread.new do
       while @@rate_state
         for pair in @@pairs
