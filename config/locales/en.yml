@@ -21,13 +21,21 @@ en:
       choise_saved: Select actions with your currencies
       enter_balance: Enter balance %{currency}. (*Will be stored encrypted*)
       select_currency: Select currency to convert
-      non_zero: There must be a number. Enter again?
-      check: '%{balance} %{currency} - save?'
+      not_number: There must be a number. Enter again?
+      check: '*%{balance} %{currency}* - save?'
+      enter_deviation: Enter a percentage deviation
+      old_deviation: 'Old value: *%{deviation}%*'
+      check_deviation: 'Deviation: *%{deviation}%*'
+      summary: |
+        Your: *%{coin}*
+        Current exchange: *%{exchange}*
+        Deviation (+/-): *%{deviation}%*(just about *%{calculated_deviation}* from the current exchange)
     admin:
       status: 'Status: *%{status}*'
       sender: Send a message for mailing
       send_everyone: Send to everyone
-      sended: Sended %{to} of %{of}
+      sended: Sended *%{to}* of *%{of}*
+      not_admin: Your not admin :(
     answer:
       deleted: Currency deleted
       previously_deleted: The currency has already been removed
@@ -35,7 +43,3 @@ en:
       saved: Saved!
     action_missing:
       command: '%{command} not supported'
-    help:
-      content: |
-        Доступные команды:
-        /start - Начать или изменить подписку.

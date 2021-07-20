@@ -5,11 +5,4 @@
 #
 #   movies = Movie.create([{ name: 'Star Wars' }, { name: 'Lord of the Rings' }])
 #   Character.create(name: 'Luke', movie: movies.first)
-if ToCurrency.count == 0
-  ToCurrency.create(currency: "btc")
-  ToCurrency.create(currency: "eth")
-  ToCurrency.create(currency: "usd")
-  ToCurrency.create(currency: "eur")
-end
-
 User.find_by(user: ENV['SUPERADMIN_ID']).admin = Admin.create(is_admin: true)

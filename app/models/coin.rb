@@ -1,5 +1,8 @@
 class Coin < ApplicationRecord
-  enum currency: [:btc, :eth, :usd, :eur]
+  currencies = [:btc, :eth, :usd, :eur]
+  enum currency: currencies, _suffix: true
+  enum to_currency: currencies, _prefix: :currency
+
   belongs_to :user
-  has_and_belongs_to_many :to_currency, dependent: :destroy
+  has_one :exchange, dependent: :destroy
 end

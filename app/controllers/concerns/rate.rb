@@ -5,8 +5,6 @@ module Rate
   @@rate_state = false
   @@pairs = ["btcusd", "btceur", "ethusd", "etheur"]
 
-  @@range = {"btcusd" => 200, "btceur" => 200, "ethusd" => 10, "etheur" => 10}
-
   @@delay = 60
 
   @@th = nil
@@ -24,39 +22,46 @@ module Rate
     @@rate_state
   end
 
-  def checking_changes(pair, value)
-    recorded_value = Exchenge.find_by(pair: pair)
-    dynamics = nil
-    if recorded_value.nil?
-      Exchenge.create(pair: pair, value: value)
-    else
-      range = @@range[pair]
-      if value < recorded_value.value - range
-        dynamics = '▼'
-      elsif value > recorded_value.value + range
-        dynamics = '▲'
-      end
-
-      unless dynamics.nil?
-        recorded_value.update(value: value)
-        find_coin_for_sending pair, value, dynamics
-      end
-
+  def get_exchange(pair)
+    uri = URI("https://www.bitstamp.net/api/v2/ticker/#{pair}/")
+    Net::HTTP.start(uri.host, uri.port, :use_ssl => true) do |http|
+      request = Net::HTTP::Get.new uri
+      response = http.request request
+      JSON(response.body)["last"].to_i
     end
   end
 
-  def find_coin_for_sending(pair, rate_value, dynamics = nil)
+  def get_dynamics(exchange_value, coin_exchange, coin_deviation)
+    calculated_deviation = calculate_deviation coin_exchange, coin_deviation
+    if exchange_value < coin_exchange - calculated_deviation
+      '▼'
+    elsif exchange_value > coin_exchange + calculated_deviation
+      '▲'
+    else
+      nil
+    end
+  end
+
+  def calculate_deviation(coin_exchange, coin_deviation)
+    (coin_exchange.to_f * coin_deviation.to_f)/100
+  end
+
+  def find_currency(pair, exchange_value)
     currency_name = pair[0..2]
     to_currency_name = pair[3..-1]
-    to_currency = ToCurrency.where(currency: currency_name).or(ToCurrency.where(currency: to_currency_name))
-    to_currency.map{|item| item.coin.find_each do |coin_item|
-      if coin_item.currency == currency_name or coin_item.currency == to_currency_name
-        user = coin_item.user
-        unless user.editable.status
-          sending_conversion(pair, rate_value, coin_item, dynamics)
+    to_currency = Coin.where(to_currency: currency_name).or(Coin.where(to_currency: to_currency_name))
+    to_currency.map{|item|
+      if item.currency == currency_name or item.currency == to_currency_name
+        coin_exchange = item.exchange.value
+        coin_deviation = item.exchange.deviation
+        dynamics = get_dynamics(exchange_value, coin_exchange, coin_deviation)
+        unless dynamics.nil?
+          item.exchange.update(value: exchange_value)
+          unless item.user.editable.status
+            sending_conversion(pair, exchange_value, item, dynamics)
+          end
         end
       end
-    end
     }
   end
 
@@ -70,7 +75,7 @@ module Rate
     begin
       bot.send_message chat_id: coin_item.user.user,
                        parse_mode: "Markdown",
-                       text: "#{dynamics} #{rate_value}#{t(".currencies.#{pair[3..-1]}")} ➔ #{converted}#{t(".currencies.#{coin_item.to_currency[0].currency}")}"
+                       text: "#{dynamics} #{rate_value}#{t(".currencies.#{pair[3..-1]}")} ➔ #{converted}#{t(".currencies.#{coin_item.to_currency}")}"
     rescue
       p $!
     end
@@ -83,13 +88,8 @@ module Rate
       while @@rate_state
         for pair in @@pairs
           begin
-            uri = URI("https://www.bitstamp.net/api/v2/ticker/#{pair}/")
-            Net::HTTP.start(uri.host, uri.port, :use_ssl => true) do |http|
-              request = Net::HTTP::Get.new uri
-              response = http.request request
-              value = JSON(response.body)["last"].to_i
-              checking_changes pair, value
-            end
+            value = get_exchange pair
+            find_currency pair, value
           rescue
             p $!
           end

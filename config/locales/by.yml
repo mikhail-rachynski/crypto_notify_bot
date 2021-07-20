@@ -21,13 +21,21 @@ by:
       choise_saved: Абярыце дзеянні з вашымі валютамі
       enter_balance: Увядзіце баланс %{currency}. (*Будзе захоўвацца ў зашыфраваным выглядзе*)
       select_currency: Выберыце валюту ў якую хочаце канвертаваць
-      non_zero: Павінны быць лік больш 0. Увесці яшчэ раз?
-      check: '%{balance} %{currency} - захаваць?'
+      not_number: Павінны быць лік больш 0. Увесці яшчэ раз?
+      check: '*%{balance} %{currency}* - захаваць?'
+      enter_deviation: Увядзіце адхіленне ў працэнтах
+      old_deviation: 'Старое значэнне адхілення: *%{deviation}%*'
+      check_deviation: 'Адхіленне: *%{deviation}%*'
+      summary: |
+        Ваыя: *%{coin}*
+        Бягучы курс: *%{exchange}*
+        Адхіленне (+/-): *%{deviation}%*(прыкладна *%{calculated_deviation}* ад бягучага курса)
     admin:
       status: 'Статус: *%{status}*'
       sender: Прыйшлі нешта для рассылання ўсім
       send_everyone: Адправіць усім
-      sended: Адпраўлена %{to} з %{of}
+      sended: Адпраўлена *%{to}* з *%{of}*
+      not_admin: Ты не адмін :(
     answer:
       deleted: Валюта выдаленая
       previously_deleted: Валюта ўжо была выдаленая
@@ -35,7 +43,3 @@ by:
       saved: Захавана!
     action_missing:
       command: '%{command} не падтрымліваецца'
-    help:
-      content: |
-        Доступные команды:
-        /start - Начать или изменить подписку.
