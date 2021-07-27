@@ -1,6 +1,6 @@
 module Rate
   require 'net/http'
-  require 'encrypt'
+  include Encrypt
 
   @@rate_state = false
   @@pairs = ["btcusd", "btceur", "ethusd", "etheur"]
@@ -73,9 +73,9 @@ module Rate
       converted = (coin / rate_value).to_f.round(5)
     end
     begin
-      bot.send_message chat_id: coin_item.user.user,
-                       parse_mode: "Markdown",
-                       text: "#{dynamics} #{rate_value}#{t(".currencies.#{pair[3..-1]}")} ➔ #{converted}#{t(".currencies.#{coin_item.to_currency}")}"
+      Telegram.bot.send_message chat_id: coin_item.user.user,
+                                parse_mode: "Markdown",
+                                text: "#{dynamics} #{rate_value}#{I18n.t("telegram_webhooks.currencies.#{pair[3..-1]}")} ➔ #{converted}#{I18n.t("telegram_webhooks.currencies.#{coin_item.to_currency}")}"
     rescue
       p $!
     end
